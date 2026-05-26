@@ -64,7 +64,7 @@ devsecops-project/
   Currently it installs Flask.
 - `app/Dockerfile`: Builds a Docker image for the Flask app. It starts from a
   Python base image, installs dependencies, copies the app source code, exposes
-  port `5000`, and starts `main.py`.
+  port `5001`, and starts `main.py`.
 
 ### CI/CD
 
@@ -88,9 +88,9 @@ devsecops-project/
 - `kubernetes/namespace.yaml`: Creates the `devsecops` namespace so application
   resources are grouped separately inside the cluster.
 - `kubernetes/deployment.yaml`: Defines how the Flask app runs in Kubernetes.
-  It creates two replicas of the container and exposes container port `5000`.
+  It creates two replicas of the container and exposes container port `5001`.
 - `kubernetes/service.yaml`: Creates a stable internal Kubernetes service for
-  the app. It maps service port `80` to container port `5000`.
+  the app. It maps service port `80` to container port `5001`.
 - `kubernetes/ingress.yaml`: Defines external HTTP routing for the app using the
   host `devsecops.local` and forwards traffic to the Kubernetes service.
 
@@ -144,7 +144,7 @@ python app/src/main.py
 Test the health endpoint:
 
 ```bash
-curl http://localhost:5000/
+curl http://localhost:5001/
 ```
 
 Expected response:
@@ -160,7 +160,7 @@ Expected response:
 
 ```bash
 docker build -t devsecops-project:latest app
-docker run -p 5000:5000 devsecops-project:latest
+docker run -p 5001:5001 devsecops-project:latest
 ```
 
 ## Run Security Scan

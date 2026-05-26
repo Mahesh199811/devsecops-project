@@ -18,4 +18,4 @@ spec:
           image: devsecops-project:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 5000
+            - containerPort: 5001
