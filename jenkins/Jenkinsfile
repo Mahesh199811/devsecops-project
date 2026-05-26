@@ -1,0 +1,33 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = 'devsecops-project'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'pip install -r app/requirements.txt'
+            }
+        }
+
+        stage('Security Scan') {
+            steps {
+                sh 'bash security/trivy-scan.sh'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t ${IMAGE_NAME}:latest app'
+            }
+        }
+    }
+}
