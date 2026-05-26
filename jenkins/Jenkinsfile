@@ -2,31 +2,24 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'devsecops-project'
+        IMAGE_NAME = 'flask-app'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                git 'https://github.com/Mahesh199811/devsecops-project.git'
             }
         }
-
-        stage('Install Dependencies') {
+       stage('Build Docker Image') {
             steps {
-                sh 'pip install -r app/requirements.txt'
+                sh 'docker build -t ${IMAGE_NAME} .'
             }
         }
-
-        stage('Security Scan') {
+       stage('Run Conatiner'){
             steps {
-                sh 'bash security/trivy-scan.sh'
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                sh 'docker build -t ${IMAGE_NAME}:latest app'
+                sh 'docker rm -f flask-app-container || true'
+                sh 'docker run -d --name flask-app-container -p 5001:5001 ${IMAGE_NAME}'
             }
         }
     }
