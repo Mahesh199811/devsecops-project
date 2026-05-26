@@ -16,7 +16,7 @@ pipeline {
                 sh 'docker build -t ${IMAGE_NAME} .'
             }
         }
-       stage('Run Conatiner'){
+       stage('Run Container'){
             steps {
                 sh 'docker rm -f flask-app-container || true'
                 sh 'docker run -d --name flask-app-container -p 5001:5001 ${IMAGE_NAME}'
