@@ -8,7 +8,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Mahesh199811/devsecops-project.git'
+                checkout scm
             }
         }
        stage('Build Docker Image') {
