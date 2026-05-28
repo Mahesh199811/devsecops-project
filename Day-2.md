@@ -1,21 +1,22 @@
 # DevOps Practice - Day 2
 
-This Day 2 practice covers pushing a Docker image from Jenkins to a container
-registry. You can use either Docker Hub or AWS ECR.
+This Day 2 practice covers pushing a Docker image from Jenkins to container
+registries. The current pipeline pushes the same image to Docker Hub and AWS
+ECR.
 
 ## Practice Goal
 
 By the end of this setup, the flow should work like this:
 
 ```text
-Push code to GitHub -> Jenkins builds image -> Jenkins pushes image to registry
+Push code to GitHub -> Jenkins builds image -> Jenkins pushes image to registries
 ```
 
 Tools configured in this practice:
 
 - Docker for building the application image
 - Jenkins for CI/CD automation
-- Docker Hub or AWS ECR for storing the image
+- Docker Hub and AWS ECR for storing the image
 - Jenkins credentials for securely storing registry secrets
 
 ## Quick Validation Checklist
@@ -53,46 +54,41 @@ docker ps
 If Docker still fails from Jenkins, restart the server or reconnect the Jenkins
 agent so the new group membership is active.
 
-## 2. Add Registry Parameters to Jenkinsfile
+## 2. Configure Image and Registry Values in Jenkinsfile
 
-The project `Jenkinsfile` supports both Docker Hub and AWS ECR using build
-parameters:
+The project `Jenkinsfile` defines the image name, image tag, Docker Hub
+repository, and AWS ECR settings in the `environment` block:
 
 ```groovy
-parameters {
-    choice(
-        name: 'REGISTRY_TYPE',
-        choices: ['dockerhub', 'ecr'],
-        description: 'Container registry to push the image to.'
-    )
-    string(
-        name: 'DOCKERHUB_REPOSITORY',
-        defaultValue: 'your-dockerhub-username/flask-app',
-        description: 'Docker Hub repository, for example username/flask-app.'
-    )
-    string(
-        name: 'ECR_REGISTRY',
-        defaultValue: '123456789012.dkr.ecr.ap-south-1.amazonaws.com',
-        description: 'AWS ECR registry URL.'
-    )
-    string(
-        name: 'ECR_REPOSITORY',
-        defaultValue: 'flask-app',
-        description: 'AWS ECR repository name.'
-    )
-    string(
-        name: 'AWS_REGION',
-        defaultValue: 'ap-south-1',
-        description: 'AWS region for ECR.'
-    )
+environment {
+    IMAGE_NAME = 'flask-app'
+    IMAGE_TAG = "${BUILD_NUMBER}"
+    DOCKERHUB_REPO = 'maheshgadhave82/flask-app'
+    AWS_ACCOUNT_ID = '659093653742'
+    AWS_REGION = 'ap-south-1'
+    ECR_REPO = 'flask-app'
 }
 ```
 
 The pipeline tags images with:
 
 ```text
-BUILD_NUMBER
-latest
+flask-app:BUILD_NUMBER
+flask-app:latest
+```
+
+For Docker Hub, the pipeline pushes:
+
+```text
+maheshgadhave82/flask-app:BUILD_NUMBER
+maheshgadhave82/flask-app:latest
+```
+
+For AWS ECR, the pipeline pushes:
+
+```text
+659093653742.dkr.ecr.ap-south-1.amazonaws.com/flask-app:BUILD_NUMBER
+659093653742.dkr.ecr.ap-south-1.amazonaws.com/flask-app:latest
 ```
 
 ## 3. Install Required Jenkins Plugins
@@ -112,7 +108,7 @@ AWS Credentials
 
 Restart Jenkins if the plugin installation asks for it.
 
-## 4. Option A: Push to Docker Hub
+## 4. Push to Docker Hub
 
 Create a Docker Hub access token:
 
@@ -130,27 +126,20 @@ Username: YOUR_DOCKERHUB_USERNAME
 Password: YOUR_DOCKERHUB_ACCESS_TOKEN
 ```
 
-Run the Jenkins pipeline with these parameters:
-
-```text
-REGISTRY_TYPE: dockerhub
-DOCKERHUB_REPOSITORY: YOUR_DOCKERHUB_USERNAME/flask-app
-```
-
 Jenkins will push:
 
 ```text
-YOUR_DOCKERHUB_USERNAME/flask-app:BUILD_NUMBER
-YOUR_DOCKERHUB_USERNAME/flask-app:latest
+maheshgadhave82/flask-app:BUILD_NUMBER
+maheshgadhave82/flask-app:latest
 ```
 
 Verify from your machine or Jenkins server:
 
 ```bash
-docker pull YOUR_DOCKERHUB_USERNAME/flask-app:latest
+docker pull maheshgadhave82/flask-app:latest
 ```
 
-## 5. Option B: Push to AWS ECR
+## 5. Push to AWS ECR
 
 Install AWS CLI on the Jenkins server:
 
@@ -174,7 +163,7 @@ Add AWS credentials in Jenkins:
 ```text
 Manage Jenkins -> Credentials -> System -> Global credentials -> Add Credentials
 Kind: AWS Credentials
-ID: aws-credentials
+ID: aws-creds
 Access key ID: YOUR_AWS_ACCESS_KEY
 Secret access key: YOUR_AWS_SECRET_KEY
 ```
@@ -190,20 +179,11 @@ ecr:CompleteLayerUpload
 ecr:PutImage
 ```
 
-Run the Jenkins pipeline with these parameters:
-
-```text
-REGISTRY_TYPE: ecr
-ECR_REGISTRY: AWS_ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com
-ECR_REPOSITORY: flask-app
-AWS_REGION: ap-south-1
-```
-
 Jenkins will push:
 
 ```text
-AWS_ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/flask-app:BUILD_NUMBER
-AWS_ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/flask-app:latest
+659093653742.dkr.ecr.ap-south-1.amazonaws.com/flask-app:BUILD_NUMBER
+659093653742.dkr.ecr.ap-south-1.amazonaws.com/flask-app:latest
 ```
 
 Verify the image in ECR:
@@ -212,7 +192,38 @@ Verify the image in ECR:
 aws ecr describe-images --repository-name flask-app --region ap-south-1
 ```
 
-## 6. Common Errors
+## 6. Add Post Actions
+
+The pipeline includes post actions that run after the stages complete:
+
+```groovy
+post {
+    success {
+        echo "Pipeline completed successfully. Image tag pushed: ${IMAGE_TAG}"
+    }
+    failure {
+        echo "Pipeline failed. Check the stage logs for the error."
+    }
+    always {
+        sh '''
+            docker rm -f flask-app-container || true
+            docker logout || true
+            docker logout ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com || true
+            docker image prune -f || true
+        '''
+    }
+}
+```
+
+What it does:
+
+- Prints a success message when the image push completes.
+- Prints a failure message when any stage fails.
+- Removes the test container after every run.
+- Logs out of Docker Hub and ECR.
+- Cleans dangling Docker images from the Jenkins agent.
+
+## 7. Common Errors
 
 Docker permission error:
 
@@ -236,7 +247,7 @@ denied: requested access to the resource is denied
 Fix:
 
 ```text
-Check DOCKERHUB_REPOSITORY and dockerhub-credentials.
+Check DOCKERHUB_REPO in Jenkinsfile and dockerhub-credentials in Jenkins.
 ```
 
 ECR login error:
@@ -248,7 +259,7 @@ Unable to locate credentials
 Fix:
 
 ```text
-Check aws-credentials in Jenkins and confirm the AWS Credentials plugin is installed.
+Check aws-creds in Jenkins and confirm the AWS Credentials plugin is installed.
 ```
 
 ## Final Flow
