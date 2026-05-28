@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <h1>Task Manager</h1>
+      <p>Simple full-stack app with Flask, SQLite, and a clean frontend.</p>
+    </section>
+
+    <section class="card form-card">
+      <h2>Create Task</h2>
+      <form id="task-form">
+        <label for="title">Title</label>
+        <input id="title" name="title" type="text" maxlength="120" required placeholder="Ex: Finish DevSecOps notes">
+
+        <label for="description">Description</label>
+        <textarea id="description" name="description" maxlength="400" rows="4" placeholder="Optional details"></textarea>
+
+        <button type="submit">Add Task</button>
+      </form>
+      <p id="form-error" class="error" aria-live="polite"></p>
+    </section>
+
+    <section class="card list-card">
+      <div class="list-header">
+        <h2>Your Tasks</h2>
+        <button id="refresh-btn" type="button" class="ghost">Refresh</button>
+      </div>
+      <ul id="task-list" class="task-list"></ul>
+      <p id="empty-state" class="empty-state">No tasks yet. Add your first one.</p>
+    </section>
+  </main>
+
+  <template id="task-item-template">
+    <li class="task-item">
+      <div class="task-main">
+        <input class="toggle" type="checkbox" aria-label="Mark task done">
+        <div>
+          <h3 class="task-title"></h3>
+          <p class="task-description"></p>
+        </div>
+      </div>
+      <button class="delete-btn" type="button">Delete</button>
+    </li>
+  </template>
+
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>
