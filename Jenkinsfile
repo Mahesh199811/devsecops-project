@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = 'flask-app'
+        IMAGE_TAG = "${BUILD_NUMBER}"
         DOCKERHUB_REPO = 'maheshgadhave82/flask-app'
         AWS_ACCOUNT_ID = '659093653742'
         AWS_REGION = 'ap-south-1'
@@ -17,13 +18,13 @@ pipeline {
         }
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t ${IMAGE_NAME} ./app'
+                sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ./app'
             }
         }
         stage('Run Container') {
             steps {
                 sh 'docker rm -f flask-app-container || true'
-                sh 'docker run -d --name flask-app-container -p 5001:5001 ${IMAGE_NAME}'
+                sh 'docker run -d --name flask-app-container -p 5001:5001 ${IMAGE_NAME}:${IMAGE_TAG}'
             }
         }
         stage('Push Image to Docker Hub') {
@@ -35,7 +36,9 @@ pipeline {
                 )]) {
                     sh '''
                         echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
-                        docker tag ${IMAGE_NAME} ${DOCKERHUB_REPO}:latest
+                        docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKERHUB_REPO}:${IMAGE_TAG}
+                        docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKERHUB_REPO}:latest
+                        docker push ${DOCKERHUB_REPO}:${IMAGE_TAG}
                         docker push ${DOCKERHUB_REPO}:latest
                         docker logout
                     '''
@@ -51,17 +54,37 @@ pipeline {
                 ]]) {
                     sh '''
                         AWS_ECR_REGISTRY=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-                        ECR_IMAGE=${AWS_ECR_REGISTRY}/${ECR_REPO}:latest
+                        ECR_IMAGE=${AWS_ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}
+                        ECR_LATEST_IMAGE=${AWS_ECR_REGISTRY}/${ECR_REPO}:latest
 
                         aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ECR_REGISTRY}
 
                         docker tag ${IMAGE_NAME}:latest ${ECR_IMAGE}
+                        docker tag ${IMAGE_NAME}:latest ${ECR_LATEST_IMAGE}
                         docker push ${ECR_IMAGE}
+                        docker push ${ECR_LATEST_IMAGE}
 
                         docker logout ${AWS_ECR_REGISTRY}
                     '''
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline completed successfully. Image tag pushed: ${IMAGE_TAG}"
+        }
+        failure {
+            echo "Pipeline failed. Check the stage logs for the error."
+        }
+        always {
+            sh '''
+                docker rm -f flask-app-container || true
+                docker logout || true
+                docker logout ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com || true
+                docker image prune -f || true
+            '''
         }
     }
 }
