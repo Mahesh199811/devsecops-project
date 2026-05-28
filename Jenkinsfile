@@ -27,6 +27,17 @@ pipeline {
                 sh 'docker run -d --name flask-app-container -p 5001:5001 ${IMAGE_NAME}:${IMAGE_TAG}'
             }
         }
+        stage('Test Application') {
+            steps {
+                sh '''
+                    echo "Waiting for Flask app to start..."
+                    sleep 5
+                    echo "Testing application health..."
+                    curl -f http://localhost:5001/ || exit 1
+                    echo "Application is running successfully!"
+                '''
+            }
+        }
         stage('Push Image to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(
