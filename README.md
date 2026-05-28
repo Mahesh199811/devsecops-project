@@ -163,6 +163,58 @@ docker build -t devsecops-project:latest app
 docker run -p 5001:5001 devsecops-project:latest
 ```
 
+## Push Docker Image from Jenkins
+
+The Jenkins pipeline can push the built image to either Docker Hub or AWS ECR.
+It tags each image with the Jenkins build number and `latest`.
+
+### Docker Hub
+
+Create a Jenkins credential:
+
+```text
+Kind: Username with password
+ID: dockerhub-credentials
+Username: your Docker Hub username
+Password: your Docker Hub access token
+```
+
+Run the pipeline with:
+
+```text
+REGISTRY_TYPE: dockerhub
+DOCKERHUB_REPOSITORY: your-dockerhub-username/flask-app
+```
+
+### AWS ECR
+
+Install the AWS CLI on the Jenkins agent and make sure the ECR repository exists:
+
+```bash
+aws ecr create-repository --repository-name flask-app --region ap-south-1
+```
+
+Create a Jenkins credential:
+
+```text
+Kind: AWS Credentials
+ID: aws-credentials
+Access key ID: your AWS access key
+Secret access key: your AWS secret key
+```
+
+Run the pipeline with:
+
+```text
+REGISTRY_TYPE: ecr
+ECR_REGISTRY: 123456789012.dkr.ecr.ap-south-1.amazonaws.com
+ECR_REPOSITORY: flask-app
+AWS_REGION: ap-south-1
+```
+
+The Jenkins agent needs Docker, AWS CLI, Docker Pipeline plugin, and AWS
+Credentials plugin installed.
+
 ## Run Security Scan
 
 Install Trivy first, then run:
