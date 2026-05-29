@@ -2,12 +2,12 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'flask-app'
+        IMAGE_NAME = 'dotnet-app'
         IMAGE_TAG = "${BUILD_NUMBER}"
-        DOCKERHUB_REPO = 'maheshgadhave82/flask-app'
+        DOCKERHUB_REPO = 'maheshgadhave82/dotnet-app'
         AWS_ACCOUNT_ID = '659093653742'
         AWS_REGION = 'ap-south-1'
-        ECR_REPO = 'flask-app'
+        ECR_REPO = 'dotnet-app'
     }
 
     stages {
@@ -23,17 +23,17 @@ pipeline {
         }
         stage('Run Container') {
             steps {
-                sh 'docker rm -f flask-app-container || true'
-                sh 'docker run -d --name flask-app-container -p 5001:5001 ${IMAGE_NAME}:${IMAGE_TAG}'
+                sh 'docker rm -f dotnet-app-container || true'
+                sh 'docker run -d --name dotnet-app-container -p 5001:5001 ${IMAGE_NAME}:${IMAGE_TAG}'
             }
         }
         stage('Test Application') {
             steps {
                 sh '''
-                    echo "Waiting for Flask app to start..."
+                    echo "Waiting for .NET app to start..."
                     sleep 5
                     echo "Testing application health..."
-                    curl -f http://localhost:5001/ || exit 1
+                    curl -f http://localhost:5001/health || exit 1
                     echo "Application is running successfully!"
                 '''
             }
@@ -91,7 +91,7 @@ pipeline {
         }
         always {
             sh '''
-                docker rm -f flask-app-container || true
+                docker rm -f dotnet-app-container || true
                 docker logout || true
                 docker logout ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com || true
                 docker image prune -f || true

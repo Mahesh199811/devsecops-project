@@ -1,0 +1,5 @@
+bin/
+obj/
+instance/
+src/
+*.db

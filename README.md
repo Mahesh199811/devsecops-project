@@ -4,7 +4,8 @@ This repository is a starter DevSecOps project that combines application code,
 containerization, CI/CD, infrastructure as code, Kubernetes deployment,
 GitOps, monitoring, and security scanning.
 
-The sample application is a small Flask service that exposes a health endpoint.
+The sample application is a small ASP.NET Core service that exposes a task UI,
+task CRUD API, and health endpoint.
 The surrounding folders show how the service can be built, scanned, deployed,
 and monitored using common DevSecOps tooling.
 
@@ -13,10 +14,14 @@ and monitored using common DevSecOps tooling.
 ```text
 devsecops-project/
 ├── app/
-│   ├── src/
-│   │   └── main.py
+│   ├── Program.cs
+│   ├── DevSecOpsApp.csproj
+│   ├── wwwroot/
+│   │   ├── index.html
+│   │   ├── app.js
+│   │   └── style.css
 │   ├── Dockerfile
-│   └── requirements.txt
+│   └── .dockerignore
 ├── jenkins/
 │   └── Jenkinsfile
 ├── terraform/
@@ -43,7 +48,7 @@ devsecops-project/
 
 ## Components
 
-- `app/`: Flask application source code, Python dependencies, and Dockerfile.
+- `app/`: ASP.NET Core application source code, static frontend assets, and Dockerfile.
 - `jenkins/`: Jenkins pipeline definition for checkout, dependency install,
   security scanning, and Docker image build.
 - `terraform/`: Infrastructure as code configuration for cloud resources.
@@ -57,20 +62,19 @@ devsecops-project/
 
 ### Application
 
-- `app/src/main.py`: Defines the Flask application. It creates a simple web
-  service with a `/` endpoint that returns a JSON health response showing the
-  service is running.
-- `app/requirements.txt`: Lists Python dependencies required by the application.
-  Currently it installs Flask.
-- `app/Dockerfile`: Builds a Docker image for the Flask app. It starts from a
-  Python base image, installs dependencies, copies the app source code, exposes
-  port `5001`, and starts `main.py`.
+- `app/Program.cs`: Defines the ASP.NET Core app. It serves the frontend,
+  stores tasks in `app/instance/tasks.json`, exposes `/health`, and provides
+  CRUD endpoints under `/api/tasks`.
+- `app/DevSecOpsApp.csproj`: Defines the .NET 9 web project.
+- `app/wwwroot/`: Contains the static HTML, CSS, and JavaScript frontend.
+- `app/Dockerfile`: Builds a Docker image for the .NET app using a multi-stage
+  SDK/runtime build, exposes port `5001`, and starts `DevSecOpsApp.dll`.
 
 ### CI/CD
 
 - `jenkins/Jenkinsfile`: Defines the Jenkins pipeline. It checks out the source
-  code, installs Python dependencies, runs the Trivy security scan script, and
-  builds the Docker image.
+  code, builds the Docker image, smoke-tests the running container, and pushes
+  the image to Docker Hub and AWS ECR.
 
 ### Infrastructure as Code
 
@@ -87,7 +91,7 @@ devsecops-project/
 
 - `kubernetes/namespace.yaml`: Creates the `devsecops` namespace so application
   resources are grouped separately inside the cluster.
-- `kubernetes/deployment.yaml`: Defines how the Flask app runs in Kubernetes.
+- `kubernetes/deployment.yaml`: Defines how the .NET app runs in Kubernetes.
   It creates two replicas of the container and exposes container port `5001`.
 - `kubernetes/service.yaml`: Creates a stable internal Kubernetes service for
   the app. It maps service port `80` to container port `5001`.
@@ -114,7 +118,7 @@ devsecops-project/
   default it scans `devsecops-project:latest` and fails when high or critical
   vulnerabilities are found.
 - `security/sonarqube-config/sonar-project.properties`: Defines SonarQube
-  project metadata and tells SonarQube to scan the `app/src` source directory.
+  project metadata for scanning the application source.
 
 ## DevSecOps Flow
 
@@ -129,22 +133,22 @@ devsecops-project/
 
 ## Run Locally
 
-Install dependencies:
+Restore dependencies:
 
 ```bash
-pip install -r app/requirements.txt
+dotnet restore app/DevSecOpsApp.csproj
 ```
 
-Start the Flask app:
+Start the ASP.NET Core app:
 
 ```bash
-python app/src/main.py
+dotnet run --project app/DevSecOpsApp.csproj --urls http://localhost:5001
 ```
 
 Test the health endpoint:
 
 ```bash
-curl http://localhost:5001/
+curl http://localhost:5001/health
 ```
 
 Expected response:
@@ -183,7 +187,7 @@ Run the pipeline with:
 
 ```text
 REGISTRY_TYPE: dockerhub
-DOCKERHUB_REPOSITORY: your-dockerhub-username/flask-app
+DOCKERHUB_REPOSITORY: your-dockerhub-username/dotnet-app
 ```
 
 ### AWS ECR
@@ -191,7 +195,7 @@ DOCKERHUB_REPOSITORY: your-dockerhub-username/flask-app
 Install the AWS CLI on the Jenkins agent and make sure the ECR repository exists:
 
 ```bash
-aws ecr create-repository --repository-name flask-app --region ap-south-1
+aws ecr create-repository --repository-name dotnet-app --region ap-south-1
 ```
 
 Create a Jenkins credential:
@@ -208,7 +212,7 @@ Run the pipeline with:
 ```text
 REGISTRY_TYPE: ecr
 ECR_REGISTRY: 123456789012.dkr.ecr.ap-south-1.amazonaws.com
-ECR_REPOSITORY: flask-app
+ECR_REPOSITORY: dotnet-app
 AWS_REGION: ap-south-1
 ```
 

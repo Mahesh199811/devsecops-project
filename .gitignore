@@ -1,2 +1,6 @@
 __pycache__/
 *.py[cod]
+bin/
+obj/
+*.user
+app/instance/tasks.json

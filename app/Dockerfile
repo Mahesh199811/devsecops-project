@@ -1,12 +1,21 @@
-FROM python:3.12-slim
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+
+WORKDIR /src
+
+COPY DevSecOpsApp.csproj .
+RUN dotnet restore
+
+COPY . .
+RUN dotnet publish -c Release -o /app/publish --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:9.0
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --from=build /app/publish .
+RUN mkdir -p /app/instance
 
-COPY src/ ./src/
-
+ENV ASPNETCORE_URLS=http://+:5001
 EXPOSE 5001
 
-CMD ["python", "src/main.py"]
+ENTRYPOINT ["dotnet", "DevSecOpsApp.dll"]
